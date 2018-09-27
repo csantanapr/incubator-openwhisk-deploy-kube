@@ -88,6 +88,9 @@ spec:
         - name: "JAVA_OPTS"
           value: "-Xmx{{- .Values.controller.jvmHeapMB -}}M {{ .Values.controller.jvmOptions }}"
 
+        - name: "CONFIG_logback_log_level"
+          value: "{{ .Values.controller.loglevel }}"
+
         # specific controller arguments
         - name: "CONTROLLER_OPTS"
           value: {{ .Values.controller.options | quote }}

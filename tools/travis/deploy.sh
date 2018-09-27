@@ -11,3 +11,6 @@ cd $ROOTDIR
 
 echo "Publishing kube-invoker-agent image"
 ./tools/travis/publish.sh openwhisk kube-invoker-agent latest docker/invoker-agent
+
+echo "Publishing create-docker-network image"
+./tools/travis/publish.sh openwhisk create-docker-network latest docker/create-docker-network

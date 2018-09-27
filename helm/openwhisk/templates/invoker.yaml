@@ -50,6 +50,7 @@ spec:
 {{- if eq .Values.invoker.containerFactory.impl "docker" }}
       # Pull images for all default runtimes before starting invoker
 {{ include "docker_pull_runtimes" . | indent 6 }}
+{{ include "docker_create_network" . | indent 6 }}
 {{- end }}
       # Wait for a controller to be up (which implies kafka, zookeeper, couchdb are all up as well).
 {{ include "readiness.waitForController" . | indent 6 }}
@@ -79,7 +80,7 @@ spec:
               configMapKeyRef:
                 name: whisk.config
                 key: whisk_api_host_name
-          - name: "INVOKER_CONTAINER_NETWORK"
+          - name: "CONFIG_whisk_containerFactory_containerArgs_network"
             value: {{ .Values.invoker.containerNetwork | quote }}
           - name: "CONFIG_whisk_docker_containerFactory_useRunc"
             value: {{ .Values.invoker.containerFactory.useRunc | quote }}
@@ -110,6 +111,9 @@ spec:
           # Java options
           - name: "JAVA_OPTS"
             value: "-Xmx{{- .Values.invoker.jvmHeapMB -}}M {{ .Values.invoker.jvmOptions }}"
+
+          - name: "CONFIG_logback_log_level"
+            value: "{{ .Values.invoker.loglevel }}"
 
           # Invoker options
           - name: "INVOKER_OPTS"

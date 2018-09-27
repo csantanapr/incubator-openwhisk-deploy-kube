@@ -57,3 +57,17 @@
 {{- end -}}
 {{- end -}}
 
+{{- define "docker_create_network" -}}
+- name: docker-create-network
+  imagePullPolicy: {{ .Values.invoker.imagePullPolicy | quote }}
+  image: {{ .Values.invoker.createNetworkImage | quote }}
+  volumeMounts:
+    - name: dockersock
+      mountPath: "/var/run/docker.sock"
+  env:
+    - name: "ACTION_CONTAINER_NETWORK_NAME"
+      value: {{ .Values.invoker.containerNetwork | quote }}
+    - name: "ACTION_CONTAINER_NETWORK_CIDR"
+      value: {{ .Values.invoker.networkCidr | quote }}
+{{- end -}}
+

@@ -1,0 +1,81 @@
+---
+
+# Playbook to create a Docker bridge network for action containers
+# on an invoker node. To be used by an init container on Kubernetes.
+#
+# If this Ansible playbook is run in a Docker container, bind mount the Docker socket:
+# => "docker run ... -v /var/run/docker.sock:/var/run/docker.sock ..."
+#
+# This Ansible playbook performs a check whether the current user has read / write access
+# to the Docker socket file "/var/run/docker.sock". If this Ansible playbook is run in a
+# Docker container and the access check fails, the user in the container user namespace
+# running the Ansible playbook has probably no access to the bind-mounted Docker socket file.
+# If the Docker container runs in Docker machine, this failure is likely to happen.
+# There are two ways to address this problem:
+# 1. Allow others to read / write the Docker socket file: "chmod o+rw /var/run/docker.sock".
+#    When using Docker machine, you need to fix the socket within the VM.
+# 2. Run the container in the user host namespace: "docker run ... --userns host ...".
+
+- hosts: localhost
+  vars:
+    docker_socket_file: "/var/run/docker.sock"
+    action_container_network_name: "{{ lookup('env', 'ACTION_CONTAINER_NETWORK_NAME') }}"
+    action_container_network_cidr: "{{ lookup('env', 'ACTION_CONTAINER_NETWORK_CIDR') }}"
+
+  tasks:
+    - name: "Verify that environment variable 'ACTION_CONTAINER_NETWORK_NAME' is defined and not empty"
+      fail: msg="Environment variable 'ACTION_CONTAINER_NETWORK_NAME' must not be empty"
+      when: (action_container_network_name is undefined) or (action_container_network_name is none) or (action_container_network_name | trim == "")
+
+    - name: "Verify that environment variable 'ACTION_CONTAINER_NETWORK_CIDR' is defined and not empty"
+      fail: msg="Environment variable 'ACTION_CONTAINER_NETWORK_CIDR' must not be empty"
+      when: (action_container_network_cidr is undefined) or (action_container_network_cidr is none) or (action_container_network_cidr | trim == "")
+
+    - name: "Display all variables"
+      debug:
+        msg:
+          - "action_container_network_name: '{{ action_container_network_name }}'"
+          - "action_container_network_cidr: '{{ action_container_network_cidr }}'"
+
+    # Check whether the Docker socket file exists and current user is allowed to read / write it.
+    - name: "Verify Docker socket file ('{{ docker_socket_file }}')"
+      stat:
+        path: "{{ docker_socket_file }}"
+      register: socket
+    - fail: msg="Docker socket file does not exist"
+      when: not(socket.stat.exists)
+    - fail: msg="'{{ docker_socket_file }}' is no socket file"
+      when: not(socket.stat.issock)
+    - fail: msg="User cannot read / write Docker socket file"
+      when: not(socket.stat.readable) or not(socket.stat.writeable)
+
+    - name: "Docker Info"
+      shell: "docker info"
+      register: di
+    - debug: var=di.stdout_lines
+
+    - name: "List Docker networks (before creating / updating Docker network)"
+      shell: "docker network ls"
+      register: dnls
+    - debug: var=dnls.stdout_lines
+
+    - name: "Create / update Docker network '{{ action_container_network_name }}'"
+      docker_network:
+        name: "{{ action_container_network_name }}"
+        appends: yes # if network already exists, keep containers connected
+        driver: bridge
+        driver_options:
+          com.docker.network.bridge.name: "{{ action_container_network_name }}"
+        ipam_options:
+          subnet: "{{ action_container_network_cidr }}"
+        state: present
+
+    - name: "List Docker networks (after creating / updating Docker network)"
+      shell: "docker network ls"
+      register: dnls
+    - debug: var=dnls.stdout_lines
+
+    - name: "Inspect Docker network"
+      shell: "docker network inspect {{ action_container_network_name }}"
+      register: dninspect
+    - debug: var=dninspect.stdout_lines

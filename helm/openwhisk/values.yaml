@@ -150,6 +150,7 @@ controller:
   options: ""
   jvmHeapMB: "1024"
   jvmOptions: ""
+  loglevel: "INFO"
   limits:
     actionsSequenceMaxlength: 50
     triggersFiresPerminute: 60
@@ -167,6 +168,7 @@ invoker:
   options: ""
   jvmHeapMB: "512"
   jvmOptions: ""
+  loglevel: "INFO"
   containerFactory:
     useRunc: false
     impl: "docker"
@@ -177,8 +179,10 @@ invoker:
         image: "openwhisk/kube-invoker-agent:latest"
         enabled: false
         port: 3233
-  containerNetwork: "bridge"
+  containerNetwork: "ac-net"
   kube_dns: nil
+  createNetworkImage: "csantanapr/create-docker-network:latest"
+  networkCidr: "192.168.0.0/16"
 
 # API Gateway configurations
 apigw:
